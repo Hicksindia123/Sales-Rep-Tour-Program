@@ -1,21 +1,89 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Rep Dashboard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tour Program</title>
   <style>
-    body { font-family: Arial; padding: 20px; }
-    table, td, th { border: 1px solid #ccc; border-collapse: collapse; padding: 5px; }
-    select { padding: 5px; margin-bottom: 10px; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f7fa;
+      padding: 30px;
+      color: #333;
+    }
+
+    h2 {
+      color: #2c3e50;
+      border-left: 5px solid #2980b9;
+      padding-left: 10px;
+      font-size: 28px;
+    }
+
+    label {
+      font-weight: bold;
+    }
+
+    select {
+      padding: 8px;
+      margin: 10px 0 20px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      background-color: #fff;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #3498db;
+      color: white;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+
+    button {
+      padding: 5px 12px;
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #219150;
+    }
+
+    .select-status {
+      padding: 5px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
   </style>
 </head>
 <body>
-  <h2>Rep Dashboard</h2>
-  <label>Select Rep:</label>
+
+  <h2>Tour Program</h2>
+
+  <label for="repSelect">Select Rep Name:</label>
   <select id="repSelect" onchange="loadData()"></select>
+
   <div id="tableContainer"></div>
 
   <script>
-    const API_URL = 'https://script.google.com/macros/s/AKfycbySyHzCICmm0SH5p7us8hyTOQBxfOJR9Nq1z9CvhorKwlzFJS-Hfs0_IvoO6FMbaWmK/exec'; // paste your deployed Apps Script web app URL here
+    const API_URL = 'https://script.google.com/macros/s/AKfycbySyHzCICmm0SH5p7us8hyTOQBxfOJR9Nq1z9CvhorKwlzFJS-Hfs0_IvoO6FMbaWmK/exec'; // ← Replace this with your Apps Script Web App URL
 
     async function fetchAPI(params) {
       const formData = new URLSearchParams(params).toString();
@@ -43,34 +111,60 @@
       if (!repName) return;
 
       const data = await fetchAPI({ action: 'getRepData', repName });
-
-      let html = `<table><tr><th>Date</th><th>Day</th><th>Month</th><th>Year</th>
-                  <th>Rep Name</th><th>State</th><th>City</th><th>Distributor</th>
-                  <th>Status</th><th>Update</th></tr>`;
+      let html = `<table>
+                    <tr>
+                      <th>Date</th><th>Day</th><th>Month</th><th>Year</th>
+                      <th>Rep Name</th><th>State</th><th>City</th><th>Distributor</th>
+                      <th>Status</th><th>Update</th>
+                    </tr>`;
 
       data.forEach(row => {
-        html += `<tr>${row.data.map((val, idx) => {
-          if (idx === 8) { // Status column
-            return `<td><select id="status_${row.row}">
+        const rowIndex = row.row;
+        const values = row.data;
+
+        if (values[8] === "Done") return; // ✅ Hide if Status is "Done"
+
+        const formattedValues = values.map((val, i) => {
+          if (i === 0 && val) {
+            const d = new Date(val);
+            return formatDate(d);
+          }
+          return val;
+        });
+
+        html += `<tr>${formattedValues.map((val, idx) => {
+          if (idx === 8) {
+            return `<td><select class="select-status" id="status_${rowIndex}">
                       <option value="">--</option>
                       <option value="Done" ${val === "Done" ? "selected" : ""}>Done</option>
                     </select></td>`;
+          } else {
+            return `<td>${val}</td>`;
           }
-          return `<td>${val}</td>`;
-        }).join('')}<td><button onclick="updateStatus(${row.row})">✔</button></td></tr>`;
+        }).join('')}
+        <td><button onclick="updateStatus(${rowIndex})">✔</button></td></tr>`;
       });
 
       html += `</table>`;
       document.getElementById("tableContainer").innerHTML = html;
     }
 
+    function formatDate(dateObj) {
+      const d = dateObj.getDate().toString().padStart(2, '0');
+      const m = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+      const y = dateObj.getFullYear();
+      return `${d}-${m}-${y}`;
+    }
+
     async function updateStatus(row) {
-      const value = document.getElementById(`status_${row}`).value;
-      await fetchAPI({ action: 'updateStatus', row, status: value });
+      const status = document.getElementById(`status_${row}`).value;
+      await fetchAPI({ action: 'updateStatus', row, status });
       alert("Status updated!");
+      loadData(); // refresh after update
     }
 
     loadReps();
   </script>
+
 </body>
 </html>
