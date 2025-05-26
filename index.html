@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Rep Dashboard</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    table, td, th { border: 1px solid #ccc; border-collapse: collapse; padding: 5px; }
+    select { padding: 5px; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <h2>Rep Dashboard</h2>
+  <label>Select Rep:</label>
+  <select id="repSelect" onchange="loadData()"></select>
+  <div id="tableContainer"></div>
+
+  <script>
+    const API_URL = 'https://script.google.com/macros/s/AKfycbySyHzCICmm0SH5p7us8hyTOQBxfOJR9Nq1z9CvhorKwlzFJS-Hfs0_IvoO6FMbaWmK/exec'; // paste your deployed Apps Script web app URL here
+
+    async function fetchAPI(params) {
+      const formData = new URLSearchParams(params).toString();
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        body: formData,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+      return res.json();
+    }
+
+    async function loadReps() {
+      const reps = await fetchAPI({ action: 'getRepNames' });
+      const select = document.getElementById('repSelect');
+      select.innerHTML = '<option value="">-- Select --</option>';
+      reps.forEach(rep => {
+        const option = document.createElement('option');
+        option.value = option.text = rep;
+        select.appendChild(option);
+      });
+    }
+
+    async function loadData() {
+      const repName = document.getElementById('repSelect').value;
+      if (!repName) return;
+
+      const data = await fetchAPI({ action: 'getRepData', repName });
+
+      let html = `<table><tr><th>Date</th><th>Day</th><th>Month</th><th>Year</th>
+                  <th>Rep Name</th><th>State</th><th>City</th><th>Distributor</th>
+                  <th>Status</th><th>Update</th></tr>`;
+
+      data.forEach(row => {
+        html += `<tr>${row.data.map((val, idx) => {
+          if (idx === 8) { // Status column
+            return `<td><select id="status_${row.row}">
+                      <option value="">--</option>
+                      <option value="Done" ${val === "Done" ? "selected" : ""}>Done</option>
+                    </select></td>`;
+          }
+          return `<td>${val}</td>`;
+        }).join('')}<td><button onclick="updateStatus(${row.row})">✔</button></td></tr>`;
+      });
+
+      html += `</table>`;
+      document.getElementById("tableContainer").innerHTML = html;
+    }
+
+    async function updateStatus(row) {
+      const value = document.getElementById(`status_${row}`).value;
+      await fetchAPI({ action: 'updateStatus', row, status: value });
+      alert("Status updated!");
+    }
+
+    loadReps();
+  </script>
+</body>
+</html>
