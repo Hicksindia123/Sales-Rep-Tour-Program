@@ -8,82 +8,79 @@
     body {
       font-family: 'Segoe UI', sans-serif;
       background: #f4f7fa;
-      padding: 30px;
+      padding: 20px;
       color: #333;
     }
 
     h2 {
       color: #2c3e50;
-      border-left: 5px solid #2980b9;
-      padding-left: 10px;
-      font-size: 28px;
+      font-size: 24px;
+      margin-bottom: 10px;
     }
 
-    label {
-      font-weight: bold;
-    }
-
-    select {
-      padding: 8px;
-      margin: 10px 0 20px 0;
-      border: 1px solid #ccc;
-      border-radius: 5px;
+    h3 {
+      color: #444;
+      margin-top: 0;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      background-color: #fff;
+      background: #fff;
+      font-size: 14px;
+      overflow-x: auto;
+      display: block;
     }
 
     th, td {
       border: 1px solid #ddd;
-      padding: 10px;
-      text-align: left;
+      padding: 8px;
+      white-space: nowrap;
     }
 
     th {
       background-color: #3498db;
       color: white;
+      position: sticky;
+      top: 0;
     }
 
-    tr:nth-child(even) {
-      background-color: #f2f2f2;
+    select, button {
+      padding: 6px;
+      font-size: 14px;
     }
 
     button {
-      padding: 5px 12px;
-      background-color: #27ae60;
+      background-color: #2ecc71;
       color: white;
       border: none;
-      border-radius: 3px;
+      border-radius: 4px;
       cursor: pointer;
     }
 
     button:hover {
-      background-color: #219150;
+      background-color: #27ae60;
     }
 
-    .select-status {
-      padding: 5px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
+    @media screen and (max-width: 600px) {
+      body { padding: 10px; }
+      table, th, td { font-size: 12px; }
+      h2 { font-size: 20px; }
     }
   </style>
 </head>
 <body>
 
   <h2>Tour Program</h2>
-
-  <label for="repSelect">Select Rep Name:</label>
-  <select id="repSelect" onchange="loadData()"></select>
-
-  <div id="tableContainer"></div>
+  <div id="tableContainer"><p>Loading...</p></div>
 
   <script>
-    const API_URL = 'https://script.google.com/macros/s/AKfycbySyHzCICmm0SH5p7us8hyTOQBxfOJR9Nq1z9CvhorKwlzFJS-Hfs0_IvoO6FMbaWmK/exec'; // ← Replace this with your Apps Script Web App URL
+    const API_URL = 'https://script.google.com/macros/s/AKfycbySyHzCICmm0SH5p7us8hyTOQBxfOJR9Nq1z9CvhorKwlzFJS-Hfs0_IvoO6FMbaWmK/exec';
+
+    function getRepFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("rep") || "";
+    }
 
     async function fetchAPI(params) {
       const formData = new URLSearchParams(params).toString();
@@ -95,26 +92,19 @@
       return res.json();
     }
 
-    async function loadReps() {
-      const reps = await fetchAPI({ action: 'getRepNames' });
-      const select = document.getElementById('repSelect');
-      select.innerHTML = '<option value="">-- Select --</option>';
-      reps.forEach(rep => {
-        const option = document.createElement('option');
-        option.value = option.text = rep;
-        select.appendChild(option);
-      });
-    }
-
     async function loadData() {
-      const repName = document.getElementById('repSelect').value;
-      if (!repName) return;
+      const repName = getRepFromURL();
+      if (!repName) {
+        document.getElementById("tableContainer").innerHTML = "<p style='color:red;'>Rep not specified in URL.</p>";
+        return;
+      }
 
       const data = await fetchAPI({ action: 'getRepData', repName });
-      let html = `<table>
+      let html = `<h3>Welcome, ${repName}</h3>
+                  <table>
                     <tr>
                       <th>Date</th><th>Day</th><th>Month</th><th>Year</th>
-                      <th>Rep Name</th><th>State</th><th>City</th><th>Distributor</th>
+                      <th>Rep</th><th>State</th><th>City</th><th>Distributor</th>
                       <th>Status</th><th>Update</th>
                     </tr>`;
 
@@ -122,7 +112,7 @@
         const rowIndex = row.row;
         const values = row.data;
 
-        if (values[8] === "Done") return; // ✅ Hide if Status is "Done"
+        if (values[8] === "Done") return; // hide done rows
 
         const formattedValues = values.map((val, i) => {
           if (i === 0 && val) {
@@ -134,7 +124,7 @@
 
         html += `<tr>${formattedValues.map((val, idx) => {
           if (idx === 8) {
-            return `<td><select class="select-status" id="status_${rowIndex}">
+            return `<td><select id="status_${rowIndex}">
                       <option value="">--</option>
                       <option value="Done" ${val === "Done" ? "selected" : ""}>Done</option>
                     </select></td>`;
@@ -160,11 +150,10 @@
       const status = document.getElementById(`status_${row}`).value;
       await fetchAPI({ action: 'updateStatus', row, status });
       alert("Status updated!");
-      loadData(); // refresh after update
+      loadData(); // refresh table
     }
 
-    loadReps();
+    loadData();
   </script>
-
 </body>
 </html>
