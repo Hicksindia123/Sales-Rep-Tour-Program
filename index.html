@@ -23,6 +23,12 @@
       margin-top: 0;
     }
 
+    select, button {
+      padding: 6px;
+      font-size: 14px;
+      margin: 0 5px 15px 0;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -43,11 +49,6 @@
       color: white;
       position: sticky;
       top: 0;
-    }
-
-    select, button {
-      padding: 6px;
-      font-size: 14px;
     }
 
     button {
@@ -72,6 +73,23 @@
 <body>
 
   <h2>Tour Program</h2>
+  <div>
+    <label>Month:
+      <select id="monthFilter" onchange="loadData()">
+        <option value="">All</option>
+        <option value="January">January</option><option value="February">February</option>
+        <option value="March">March</option><option value="April">April</option>
+        <option value="May">May</option><option value="June">June</option>
+        <option value="July">July</option><option value="August">August</option>
+        <option value="September">September</option><option value="October">October</option>
+        <option value="November">November</option><option value="December">December</option>
+      </select>
+    </label>
+    <label>Date:
+      <input type="date" id="dateFilter" onchange="loadData()" />
+    </label>
+  </div>
+
   <div id="tableContainer"><p>Loading...</p></div>
 
   <script>
@@ -92,6 +110,19 @@
       return res.json();
     }
 
+    function matchesFilters(row) {
+      const selectedMonth = document.getElementById("monthFilter").value;
+      const selectedDate = document.getElementById("dateFilter").value;
+
+      const rowMonth = row.data[2];
+      const rowDate = row.data[0];
+
+      if (selectedMonth && rowMonth !== selectedMonth) return false;
+      if (selectedDate && formatDate(new Date(rowDate)) !== formatDate(new Date(selectedDate))) return false;
+
+      return true;
+    }
+
     async function loadData() {
       const repName = getRepFromURL();
       if (!repName) {
@@ -100,11 +131,11 @@
       }
 
       const data = await fetchAPI({ action: 'getRepData', repName });
+
       let html = `<h3>Welcome, ${repName}</h3>
                   <table>
                     <tr>
-                      <th>Date</th><th>Day</th><th>Month</th><th>Year</th>
-                      <th>Rep</th><th>State</th><th>City</th><th>Distributor</th>
+                      <th>State</th><th>City</th><th>Distributor</th>
                       <th>Status</th><th>Update</th>
                     </tr>`;
 
@@ -112,27 +143,21 @@
         const rowIndex = row.row;
         const values = row.data;
 
-        if (values[8] === "Done") return; // hide done rows
+        if (values[8] === "Done") return;
+        if (!matchesFilters(row)) return;
 
-        const formattedValues = values.map((val, i) => {
-          if (i === 0 && val) {
-            const d = new Date(val);
-            return formatDate(d);
-          }
-          return val;
-        });
-
-        html += `<tr>${formattedValues.map((val, idx) => {
-          if (idx === 8) {
-            return `<td><select id="status_${rowIndex}">
+        html += `<tr>
+                  <td>${values[5]}</td> <!-- State -->
+                  <td>${values[6]}</td> <!-- City -->
+                  <td>${values[7]}</td> <!-- Distributor -->
+                  <td>
+                    <select id="status_${rowIndex}">
                       <option value="">--</option>
-                      <option value="Done" ${val === "Done" ? "selected" : ""}>Done</option>
-                    </select></td>`;
-          } else {
-            return `<td>${val}</td>`;
-          }
-        }).join('')}
-        <td><button onclick="updateStatus(${rowIndex})">✔</button></td></tr>`;
+                      <option value="Done" ${values[8] === "Done" ? "selected" : ""}>Done</option>
+                    </select>
+                  </td>
+                  <td><button onclick="updateStatus(${rowIndex})">✔</button></td>
+                </tr>`;
       });
 
       html += `</table>`;
@@ -143,14 +168,14 @@
       const d = dateObj.getDate().toString().padStart(2, '0');
       const m = (dateObj.getMonth() + 1).toString().padStart(2, '0');
       const y = dateObj.getFullYear();
-      return `${d}-${m}-${y}`;
+      return `${y}-${m}-${d}`;
     }
 
     async function updateStatus(row) {
       const status = document.getElementById(`status_${row}`).value;
       await fetchAPI({ action: 'updateStatus', row, status });
       alert("Status updated!");
-      loadData(); // refresh table
+      loadData();
     }
 
     loadData();
