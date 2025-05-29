@@ -27,6 +27,14 @@
       margin: 0 5px 15px 0;
       min-width: 120px;
     }
+    .choices__inner {
+      max-width: 200px !important;
+      min-height: 36px;
+    }
+    .choices {
+      display: inline-block;
+      vertical-align: middle;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -94,7 +102,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
   <script>
-    const API_URL = 'https://script.google.com/macros/s/AKfycbz-dL5219X3QFn172znUAM0LlOxjykCIesz9iq4s7x51R6v5kKxFUYWRZq2QhcMF6tPaQ/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycbySyHzCICmm0SH5p7us8hyTOQBxfOJR9Nq1z9CvhorKwlzFJS-Hfs0_IvoO6FMbaWmK/exec';
     let allData = [], allStates = new Set(), allCities = new Set(), allDistributors = new Set();
 
     function getRepFromURL() {
@@ -163,21 +171,36 @@
       const selectedCity = document.getElementById("cityFilter").value;
       const selectedDistributor = document.getElementById("distributorFilter").value;
 
+      const filteredData = allData.filter(row => {
+        const values = row.data;
+        const [date, , month, , , state, city, distributor, status] = values;
+        if (status === "Done") return false;
+        if (selectedMonth && month !== selectedMonth) return false;
+        if (selectedDate && formatDate(new Date(date)) !== formatDate(new Date(selectedDate))) return false;
+        if (selectedState && state !== selectedState) return false;
+        if (selectedCity && city !== selectedCity) return false;
+        if (selectedDistributor && distributor !== selectedDistributor) return false;
+        return true;
+      });
+
       let html = `<h3>Welcome, ${repName}</h3><table><tr><th>State</th><th>City</th><th>Distributor</th><th>Status</th><th>Update</th></tr>`;
 
-      data.forEach(row => {
+      filteredData.forEach(row => {
         const rowIndex = row.row;
-        const [date, , month, , , state, city, distributor, status] = row.data;
-        if (status === "Done") return;
-        if (selectedMonth && month !== selectedMonth) return;
-        if (selectedDate && formatDate(new Date(date)) !== formatDate(new Date(selectedDate))) return;
-        if (selectedState && state !== selectedState) return;
-        if (selectedCity && city !== selectedCity) return;
-        if (selectedDistributor && distributor !== selectedDistributor) return;
+        const [ , , , , , state, city, distributor, status] = row.data;
 
-        html += `<tr><td>${state}</td><td>${city}</td><td>${distributor}</td>
-                  <td><select id="status_${rowIndex}"><option value="">--</option><option value="Done" ${status === "Done" ? "selected" : ""}>Done</option></select></td>
-                  <td><button onclick="updateStatus(${rowIndex})">✔</button></td></tr>`;
+        html += `<tr>
+          <td>${state}</td>
+          <td>${city}</td>
+          <td>${distributor}</td>
+          <td>
+            <select id="status_${rowIndex}">
+              <option value="">--</option>
+              <option value="Done" ${status === "Done" ? "selected" : ""}>Done</option>
+            </select>
+          </td>
+          <td><button onclick="updateStatus(${rowIndex})">✔</button></td>
+        </tr>`;
       });
 
       html += `</table>`;
