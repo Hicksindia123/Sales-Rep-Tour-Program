@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Tour Program</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -11,24 +12,21 @@
       padding: 20px;
       color: #333;
     }
-
     h2 {
       color: #2c3e50;
       font-size: 24px;
       margin-bottom: 10px;
     }
-
     h3 {
       color: #444;
       margin-top: 0;
     }
-
-    select, button {
+    select, button, input[type="date"] {
       padding: 6px;
       font-size: 14px;
       margin: 0 5px 15px 0;
+      min-width: 120px;
     }
-
     table {
       width: 100%;
       border-collapse: collapse;
@@ -37,20 +35,17 @@
       overflow-x: auto;
       display: block;
     }
-
     th, td {
       border: 1px solid #ddd;
       padding: 8px;
       white-space: nowrap;
     }
-
     th {
       background-color: #3498db;
       color: white;
       position: sticky;
       top: 0;
     }
-
     button {
       background-color: #2ecc71;
       color: white;
@@ -58,11 +53,9 @@
       border-radius: 4px;
       cursor: pointer;
     }
-
     button:hover {
       background-color: #27ae60;
     }
-
     @media screen and (max-width: 600px) {
       body { padding: 10px; }
       table, th, td { font-size: 12px; }
@@ -71,7 +64,6 @@
   </style>
 </head>
 <body>
-
   <h2>Tour Program</h2>
   <div>
     <label>Month:
@@ -88,12 +80,22 @@
     <label>Date:
       <input type="date" id="dateFilter" onchange="loadData()" />
     </label>
+    <label>State:
+      <select id="stateFilter" onchange="loadData()"><option value="">All</option></select>
+    </label>
+    <label>City:
+      <select id="cityFilter" onchange="loadData()"><option value="">All</option></select>
+    </label>
+    <label>Distributor:
+      <select id="distributorFilter" onchange="loadData()"><option value="">All</option></select>
+    </label>
   </div>
-
   <div id="tableContainer"><p>Loading...</p></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
   <script>
-    const API_URL = 'https://script.google.com/macros/s/AKfycbySyHzCICmm0SH5p7us8hyTOQBxfOJR9Nq1z9CvhorKwlzFJS-Hfs0_IvoO6FMbaWmK/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycbz-dL5219X3QFn172znUAM0LlOxjykCIesz9iq4s7x51R6v5kKxFUYWRZq2QhcMF6tPaQ/exec';
+    let allData = [], allStates = new Set(), allCities = new Set(), allDistributors = new Set();
 
     function getRepFromURL() {
       const params = new URLSearchParams(window.location.search);
@@ -110,17 +112,27 @@
       return res.json();
     }
 
-    function matchesFilters(row) {
-      const selectedMonth = document.getElementById("monthFilter").value;
-      const selectedDate = document.getElementById("dateFilter").value;
+    function formatDate(dateObj) {
+      const d = dateObj.getDate().toString().padStart(2, '0');
+      const m = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+      const y = dateObj.getFullYear();
+      return `${y}-${m}-${d}`;
+    }
 
-      const rowMonth = row.data[2];
-      const rowDate = row.data[0];
+    function populateFilters() {
+      const stateFilter = document.getElementById("stateFilter");
+      const cityFilter = document.getElementById("cityFilter");
+      const distributorFilter = document.getElementById("distributorFilter");
 
-      if (selectedMonth && rowMonth !== selectedMonth) return false;
-      if (selectedDate && formatDate(new Date(rowDate)) !== formatDate(new Date(selectedDate))) return false;
+      [stateFilter, cityFilter, distributorFilter].forEach(sel => sel.innerHTML = '<option value="">All</option>');
 
-      return true;
+      allStates.forEach(val => stateFilter.innerHTML += `<option value="${val}">${val}</option>`);
+      allCities.forEach(val => cityFilter.innerHTML += `<option value="${val}">${val}</option>`);
+      allDistributors.forEach(val => distributorFilter.innerHTML += `<option value="${val}">${val}</option>`);
+
+      new Choices(stateFilter, { searchEnabled: true, shouldSort: false });
+      new Choices(cityFilter, { searchEnabled: true, shouldSort: false });
+      new Choices(distributorFilter, { searchEnabled: true, shouldSort: false });
     }
 
     async function loadData() {
@@ -131,44 +143,45 @@
       }
 
       const data = await fetchAPI({ action: 'getRepData', repName });
+      allData = data;
+      allStates.clear();
+      allCities.clear();
+      allDistributors.clear();
 
-      let html = `<h3>Welcome, ${repName}</h3>
-                  <table>
-                    <tr>
-                      <th>State</th><th>City</th><th>Distributor</th>
-                      <th>Status</th><th>Update</th>
-                    </tr>`;
+      data.forEach(row => {
+        const values = row.data;
+        allStates.add(values[5]);
+        allCities.add(values[6]);
+        allDistributors.add(values[7]);
+      });
+
+      populateFilters();
+
+      const selectedMonth = document.getElementById("monthFilter").value;
+      const selectedDate = document.getElementById("dateFilter").value;
+      const selectedState = document.getElementById("stateFilter").value;
+      const selectedCity = document.getElementById("cityFilter").value;
+      const selectedDistributor = document.getElementById("distributorFilter").value;
+
+      let html = `<h3>Welcome, ${repName}</h3><table><tr><th>State</th><th>City</th><th>Distributor</th><th>Status</th><th>Update</th></tr>`;
 
       data.forEach(row => {
         const rowIndex = row.row;
-        const values = row.data;
+        const [date, , month, , , state, city, distributor, status] = row.data;
+        if (status === "Done") return;
+        if (selectedMonth && month !== selectedMonth) return;
+        if (selectedDate && formatDate(new Date(date)) !== formatDate(new Date(selectedDate))) return;
+        if (selectedState && state !== selectedState) return;
+        if (selectedCity && city !== selectedCity) return;
+        if (selectedDistributor && distributor !== selectedDistributor) return;
 
-        if (values[8] === "Done") return;
-        if (!matchesFilters(row)) return;
-
-        html += `<tr>
-                  <td>${values[5]}</td> <!-- State -->
-                  <td>${values[6]}</td> <!-- City -->
-                  <td>${values[7]}</td> <!-- Distributor -->
-                  <td>
-                    <select id="status_${rowIndex}">
-                      <option value="">--</option>
-                      <option value="Done" ${values[8] === "Done" ? "selected" : ""}>Done</option>
-                    </select>
-                  </td>
-                  <td><button onclick="updateStatus(${rowIndex})">✔</button></td>
-                </tr>`;
+        html += `<tr><td>${state}</td><td>${city}</td><td>${distributor}</td>
+                  <td><select id="status_${rowIndex}"><option value="">--</option><option value="Done" ${status === "Done" ? "selected" : ""}>Done</option></select></td>
+                  <td><button onclick="updateStatus(${rowIndex})">✔</button></td></tr>`;
       });
 
       html += `</table>`;
       document.getElementById("tableContainer").innerHTML = html;
-    }
-
-    function formatDate(dateObj) {
-      const d = dateObj.getDate().toString().padStart(2, '0');
-      const m = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-      const y = dateObj.getFullYear();
-      return `${y}-${m}-${d}`;
     }
 
     async function updateStatus(row) {
