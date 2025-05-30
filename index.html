@@ -54,6 +54,11 @@
       return params.get("rep") || "";
     }
 
+    function formatDateOnly(dateStr) {
+      const date = new Date(dateStr);
+      return isNaN(date) ? dateStr : date.toISOString().split('T')[0];
+    }
+
     async function fetchAPI(params) {
       const formData = new URLSearchParams(params).toString();
       const res = await fetch(API_URL, {
@@ -82,7 +87,7 @@
         const [date, , month, , , state, city] = row.data;
         if (selectedMonth && month !== selectedMonth) return;
 
-        visitHTML += `<tr><td>${date}</td><td>${state}</td><td>${city}</td></tr>`;
+        visitHTML += `<tr><td>${formatDateOnly(date)}</td><td>${state}</td><td>${city}</td></tr>`;
 
         const distributor = row.data[7] || "";
         const status = row.data[8] || "";
@@ -102,7 +107,7 @@
       });
 
       visitHTML += `</table>`;
-      distributorHTML += `</table>`;
+      distributorHTML += distributorsSet.size > 0 ? `</table>` : `<tr><td colspan='4'>No data found in Sheet3 for this rep and month</td></tr></table>`;
 
       document.getElementById("visitsContainer").innerHTML = visitHTML;
       document.getElementById("distributorContainer").innerHTML = distributorHTML;
