@@ -8,7 +8,7 @@
   <style>
     body { font-family: 'Segoe UI', sans-serif; background: #f4f7fa; padding: 20px; color: #333; }
     h2, h3 { color: #2c3e50; }
-    select, button, input[type="date"] { padding: 6px; font-size: 14px; margin: 0 5px 15px 0; min-width: 120px; }
+    select, button, input[type="text"], input[type="date"] { padding: 6px; font-size: 14px; margin: 0 5px 15px 0; min-width: 120px; }
     .choices__inner { max-width: 200px !important; min-height: 36px; }
     table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; overflow-x: auto; margin-top: 10px; }
     th, td { border: 1px solid #ddd; padding: 8px; white-space: nowrap; }
@@ -33,6 +33,11 @@
         <option value="November">November</option><option value="December">December</option>
       </select>
     </label>
+    <label>Distributor:
+      <select id="distributorFilter" onchange="loadData()">
+        <option value="">All</option>
+      </select>
+    </label>
   </div>
   <div class="dashboard">
     <div class="section">
@@ -47,7 +52,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
   <script>
-    const API_URL = 'https://script.google.com/macros/s/AKfycby8652L4cWm-V4OE-1ADmYeYcfU5DZKGGioiwWePQB0GWLniI5Dbg3UMVNfRX3F3vHN/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycbygjoS58gKlmfZyHzVWiBmZXACWOCttWbKEjoXjTk1rKC_GvNiWDsCIlkjSdvDyhUJnPg/exec';
 
     function getRepFromURL() {
       const params = new URLSearchParams(window.location.search);
@@ -55,8 +60,7 @@
     }
 
     function formatDateOnly(dateStr) {
-      const date = new Date(dateStr);
-      return isNaN(date) ? dateStr : date.toISOString().split('T')[0];
+      return dateStr;
     }
 
     async function fetchAPI(params) {
@@ -72,35 +76,44 @@
     async function loadData() {
       const repName = getRepFromURL();
       const selectedMonth = document.getElementById("monthFilter").value;
+      const selectedDistributor = document.getElementById("distributorFilter").value;
       if (!repName) {
         document.getElementById("visitsContainer").innerHTML = "<p style='color:red;'>Rep not specified in URL.</p>";
         return;
       }
 
-      // Load Sheet1 visit data
       const visitData = await fetchAPI({ action: 'getRepData', repName });
-      let visitHTML = `<table><tr><th>Date</th><th>State</th><th>City</th></tr>`;
+      let visitHTML = `<table><tr><th>Date</th><th>State</th><th>City</th><th>Visit Status</th><th>Reason If Not Done</th></tr>`;
       visitData.forEach(row => {
-        const [date, , month, , , state, city] = row.data;
+        const [date, , month, , , state, city, visitStatus, reason] = row.data;
         if (selectedMonth && month !== selectedMonth) return;
-        visitHTML += `<tr><td>${formatDateOnly(date)}</td><td>${state}</td><td>${city}</td></tr>`;
+        visitHTML += `<tr><td>${formatDateOnly(date)}</td><td>${state}</td><td>${city}</td><td>${visitStatus || ''}</td><td>${reason || ''}</td></tr>`;
       });
       visitHTML += `</table>`;
       document.getElementById("visitsContainer").innerHTML = visitHTML;
 
-      // Load Sheet3 distributor data
       const distData = await fetchAPI({ action: 'getRepDistributors', repName, month: selectedMonth });
+      const allDistributors = [...new Set(distData.map(d => d.distributor))];
+      const distFilter = document.getElementById("distributorFilter");
+      distFilter.innerHTML = '<option value="">All</option>' + allDistributors.map(d => `<option value="${d}">${d}</option>`).join('');
+
       let distributorHTML = `<table><tr><th>Distributor</th><th>Month</th><th>Status</th><th>Update</th></tr>`;
-      if (distData.length === 0) {
-        distributorHTML += `<tr><td colspan='4'>No distributor data found in Sheet3 for this rep and month</td></tr>`;
+      const filtered = distData.filter(d => {
+        if (d.status === "Done") return false;
+        if (selectedDistributor && d.distributor !== selectedDistributor) return false;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        distributorHTML += `<tr><td colspan='4'>No distributor data found for selection</td></tr>`;
       } else {
-        distData.forEach(row => {
+        filtered.forEach(row => {
           distributorHTML += `<tr>
             <td>${row.distributor}</td>
             <td>${row.month}</td>
             <td><select id="status_${row.row}">
               <option value="">--</option>
-              <option value="Done" ${row.status === "Done" ? "selected" : ""}>Done</option>
+              <option value="Done">Done</option>
             </select></td>
             <td><button onclick="updateStatus('${repName}', '${row.distributor}', '${row.month}', ${row.row})">✔</button></td>
           </tr>`;
