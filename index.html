@@ -3,76 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Tour Program</title>
+  <title>Rep Dashboard</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
   <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f4f7fa;
-      padding: 20px;
-      color: #333;
-    }
-    h2 {
-      color: #2c3e50;
-      font-size: 24px;
-      margin-bottom: 10px;
-    }
-    h3 {
-      color: #444;
-      margin-top: 0;
-    }
-    select, button, input[type="date"] {
-      padding: 6px;
-      font-size: 14px;
-      margin: 0 5px 15px 0;
-      min-width: 120px;
-    }
-    .choices__inner {
-      max-width: 200px !important;
-      min-height: 36px;
-    }
-    .choices {
-      display: inline-block;
-      vertical-align: middle;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-      font-size: 14px;
-      overflow-x: auto;
-      display: block;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      white-space: nowrap;
-    }
-    th {
-      background-color: #3498db;
-      color: white;
-      position: sticky;
-      top: 0;
-    }
-    button {
-      background-color: #2ecc71;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #27ae60;
-    }
-    @media screen and (max-width: 600px) {
-      body { padding: 10px; }
-      table, th, td { font-size: 12px; }
-      h2 { font-size: 20px; }
-    }
+    body { font-family: 'Segoe UI', sans-serif; background: #f4f7fa; padding: 20px; color: #333; }
+    h2, h3 { color: #2c3e50; }
+    select, button, input[type="date"] { padding: 6px; font-size: 14px; margin: 0 5px 15px 0; min-width: 120px; }
+    .choices__inner { max-width: 200px !important; min-height: 36px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; overflow-x: auto; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; white-space: nowrap; }
+    th { background-color: #3498db; color: white; position: sticky; top: 0; }
+    button { background-color: #2ecc71; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background-color: #27ae60; }
+    .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .section { background: #fff; padding: 10px; border-radius: 6px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
   </style>
 </head>
 <body>
-  <h2>Tour Program</h2>
+  <h2>Rep Dashboard</h2>
   <div>
     <label>Month:
       <select id="monthFilter" onchange="loadData()">
@@ -85,25 +33,21 @@
         <option value="November">November</option><option value="December">December</option>
       </select>
     </label>
-    <label>Date:
-      <input type="date" id="dateFilter" onchange="loadData()" />
-    </label>
-    <label>State:
-      <select id="stateFilter" onchange="loadData()"><option value="">All</option></select>
-    </label>
-    <label>City:
-      <select id="cityFilter" onchange="loadData()"><option value="">All</option></select>
-    </label>
-    <label>Distributor:
-      <select id="distributorFilter" onchange="loadData()"><option value="">All</option></select>
-    </label>
   </div>
-  <div id="tableContainer"><p>Loading...</p></div>
+  <div class="dashboard">
+    <div class="section">
+      <h3>Date-wise Visits</h3>
+      <div id="visitsContainer"><p>Loading...</p></div>
+    </div>
+    <div class="section">
+      <h3>Distributor Status</h3>
+      <div id="distributorContainer"><p>Loading...</p></div>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
   <script>
-    const API_URL = 'https://script.google.com/macros/s/AKfycbySyHzCICmm0SH5p7us8hyTOQBxfOJR9Nq1z9CvhorKwlzFJS-Hfs0_IvoO6FMbaWmK/exec';
-    let allData = [], allStates = new Set(), allCities = new Set(), allDistributors = new Set();
+    const API_URL = 'https://script.google.com/macros/s/AKfycbyhKMUyhU4oNrLpoZB5HX4ovaRY8xxZH0y0iUTV9tnTI3vIIMlrBNYw--laVVy7KyhAoQ/exec';
 
     function getRepFromURL() {
       const params = new URLSearchParams(window.location.search);
@@ -120,96 +64,56 @@
       return res.json();
     }
 
-    function formatDate(dateObj) {
-      const d = dateObj.getDate().toString().padStart(2, '0');
-      const m = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-      const y = dateObj.getFullYear();
-      return `${y}-${m}-${d}`;
-    }
-
-    function populateFilters() {
-      const stateFilter = document.getElementById("stateFilter");
-      const cityFilter = document.getElementById("cityFilter");
-      const distributorFilter = document.getElementById("distributorFilter");
-
-      [stateFilter, cityFilter, distributorFilter].forEach(sel => sel.innerHTML = '<option value="">All</option>');
-
-      allStates.forEach(val => stateFilter.innerHTML += `<option value="${val}">${val}</option>`);
-      allCities.forEach(val => cityFilter.innerHTML += `<option value="${val}">${val}</option>`);
-      allDistributors.forEach(val => distributorFilter.innerHTML += `<option value="${val}">${val}</option>`);
-
-      new Choices(stateFilter, { searchEnabled: true, shouldSort: false });
-      new Choices(cityFilter, { searchEnabled: true, shouldSort: false });
-      new Choices(distributorFilter, { searchEnabled: true, shouldSort: false });
-    }
-
     async function loadData() {
       const repName = getRepFromURL();
+      const selectedMonth = document.getElementById("monthFilter").value;
       if (!repName) {
-        document.getElementById("tableContainer").innerHTML = "<p style='color:red;'>Rep not specified in URL.</p>";
+        document.getElementById("visitsContainer").innerHTML = "<p style='color:red;'>Rep not specified in URL.</p>";
         return;
       }
-
       const data = await fetchAPI({ action: 'getRepData', repName });
-      allData = data;
-      allStates.clear();
-      allCities.clear();
-      allDistributors.clear();
+
+      let visitHTML = `<table><tr><th>Date</th><th>State</th><th>City</th><th>Distributor</th><th>Status</th></tr>`;
+      let distributorHTML = `<table><tr><th>Distributor</th><th>Month</th><th>Status</th><th>Update</th></tr>`;
+
+      const distributorsSet = new Set();
 
       data.forEach(row => {
-        const values = row.data;
-        allStates.add(values[5]);
-        allCities.add(values[6]);
-        allDistributors.add(values[7]);
-      });
+        const [date, , month, , , state, city, distributor, status] = row.data;
+        if (selectedMonth && month !== selectedMonth) return;
 
-      populateFilters();
+        visitHTML += `<tr><td>${date}</td><td>${state}</td><td>${city}</td><td>${distributor}</td><td>${status}</td></tr>`;
 
-      const selectedMonth = document.getElementById("monthFilter").value;
-      const selectedDate = document.getElementById("dateFilter").value;
-      const selectedState = document.getElementById("stateFilter").value;
-      const selectedCity = document.getElementById("cityFilter").value;
-      const selectedDistributor = document.getElementById("distributorFilter").value;
-
-      const filteredData = allData.filter(row => {
-        const values = row.data;
-        const [date, , month, , , state, city, distributor, status] = values;
-        if (status === "Done") return false;
-        if (selectedMonth && month !== selectedMonth) return false;
-        if (selectedDate && formatDate(new Date(date)) !== formatDate(new Date(selectedDate))) return false;
-        if (selectedState && state !== selectedState) return false;
-        if (selectedCity && city !== selectedCity) return false;
-        if (selectedDistributor && distributor !== selectedDistributor) return false;
-        return true;
-      });
-
-      let html = `<h3>Welcome, ${repName}</h3><table><tr><th>State</th><th>City</th><th>Distributor</th><th>Status</th><th>Update</th></tr>`;
-
-      filteredData.forEach(row => {
-        const rowIndex = row.row;
-        const [ , , , , , state, city, distributor, status] = row.data;
-
-        html += `<tr>
-          <td>${state}</td>
-          <td>${city}</td>
-          <td>${distributor}</td>
-          <td>
-            <select id="status_${rowIndex}">
+        if (distributor && !distributorsSet.has(distributor)) {
+          distributorsSet.add(distributor);
+          distributorHTML += `<tr>
+            <td>${distributor}</td>
+            <td>${month}</td>
+            <td><select id="status_${row.row}">
               <option value="">--</option>
               <option value="Done" ${status === "Done" ? "selected" : ""}>Done</option>
-            </select>
-          </td>
-          <td><button onclick="updateStatus(${rowIndex})">✔</button></td>
-        </tr>`;
+            </select></td>
+            <td><button onclick="updateStatus('${repName}', '${distributor}', '${month}', ${row.row})">✔</button></td>
+          </tr>`;
+        }
       });
 
-      html += `</table>`;
-      document.getElementById("tableContainer").innerHTML = html;
+      visitHTML += `</table>`;
+      distributorHTML += `</table>`;
+
+      document.getElementById("visitsContainer").innerHTML = visitHTML;
+      document.getElementById("distributorContainer").innerHTML = distributorHTML;
     }
 
-    async function updateStatus(row) {
+    async function updateStatus(repName, distributor, month, row) {
       const status = document.getElementById(`status_${row}`).value;
-      await fetchAPI({ action: 'updateStatus', row, status });
+      await fetchAPI({
+        action: 'updateStatus',
+        repName: repName,
+        distributor: distributor,
+        month: month,
+        status: status
+      });
       alert("Status updated!");
       loadData();
     }
