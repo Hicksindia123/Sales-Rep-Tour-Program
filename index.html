@@ -47,7 +47,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
   <script>
-    const API_URL = 'https://script.google.com/macros/s/AKfycbxFZ5MFtvgAABwB1wBCm6KBX64VZwplpxla8ajyF605KJLk1v5YPJs2Mjd1SwmBLHmbBg/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycby8652L4cWm-V4OE-1ADmYeYcfU5DZKGGioiwWePQB0GWLniI5Dbg3UMVNfRX3F3vHN/exec';
 
     function getRepFromURL() {
       const params = new URLSearchParams(window.location.search);
@@ -76,40 +76,37 @@
         document.getElementById("visitsContainer").innerHTML = "<p style='color:red;'>Rep not specified in URL.</p>";
         return;
       }
-      const data = await fetchAPI({ action: 'getRepData', repName });
 
+      // Load Sheet1 visit data
+      const visitData = await fetchAPI({ action: 'getRepData', repName });
       let visitHTML = `<table><tr><th>Date</th><th>State</th><th>City</th></tr>`;
-      let distributorHTML = `<table><tr><th>Distributor</th><th>Month</th><th>Status</th><th>Update</th></tr>`;
-
-      const distributorsSet = new Set();
-
-      data.forEach(row => {
+      visitData.forEach(row => {
         const [date, , month, , , state, city] = row.data;
         if (selectedMonth && month !== selectedMonth) return;
-
         visitHTML += `<tr><td>${formatDateOnly(date)}</td><td>${state}</td><td>${city}</td></tr>`;
+      });
+      visitHTML += `</table>`;
+      document.getElementById("visitsContainer").innerHTML = visitHTML;
 
-        const distributor = row.data[7] || "";
-        const status = row.data[8] || "";
-
-        if (distributor && !distributorsSet.has(distributor)) {
-          distributorsSet.add(distributor);
+      // Load Sheet3 distributor data
+      const distData = await fetchAPI({ action: 'getRepDistributors', repName, month: selectedMonth });
+      let distributorHTML = `<table><tr><th>Distributor</th><th>Month</th><th>Status</th><th>Update</th></tr>`;
+      if (distData.length === 0) {
+        distributorHTML += `<tr><td colspan='4'>No distributor data found in Sheet3 for this rep and month</td></tr>`;
+      } else {
+        distData.forEach(row => {
           distributorHTML += `<tr>
-            <td>${distributor}</td>
-            <td>${month}</td>
+            <td>${row.distributor}</td>
+            <td>${row.month}</td>
             <td><select id="status_${row.row}">
               <option value="">--</option>
-              <option value="Done" ${status === "Done" ? "selected" : ""}>Done</option>
+              <option value="Done" ${row.status === "Done" ? "selected" : ""}>Done</option>
             </select></td>
-            <td><button onclick="updateStatus('${repName}', '${distributor}', '${month}', ${row.row})">✔</button></td>
+            <td><button onclick="updateStatus('${repName}', '${row.distributor}', '${row.month}', ${row.row})">✔</button></td>
           </tr>`;
-        }
-      });
-
-      visitHTML += `</table>`;
-      distributorHTML += distributorsSet.size > 0 ? `</table>` : `<tr><td colspan='4'>No data found in Sheet3 for this rep and month</td></tr></table>`;
-
-      document.getElementById("visitsContainer").innerHTML = visitHTML;
+        });
+      }
+      distributorHTML += `</table>`;
       document.getElementById("distributorContainer").innerHTML = distributorHTML;
     }
 
